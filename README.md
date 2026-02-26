@@ -4,6 +4,8 @@ A portfolio-ready collection of SQL projects designed to demonstrate strong anal
 
 Built using advanced SQL techniques such as complex joins, CTEs, window functions, subqueries, views, and CTAS, each project highlights the ability to translate business questions into structured queries and actionable insights.
 
+Important Note: All projects have been created in SQL SERVER MANAGEMENT STUDIO (SSMS) saved locally and pushed to Github via Git - Bash.
+
 Below you can find all the projects included on this repository and their corresponding link sources.
 
 1. Cafe Sales - https://www.kaggle.com/datasets/ahmedmohamed2003/cafe-sales-dirty-data-for-cleaning-training
