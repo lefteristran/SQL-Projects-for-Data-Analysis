@@ -539,6 +539,8 @@ across products, payment methods, and sales channel (location).
 --******************** COMMENTS **************************************
 
 -- We are aware that we could have done a deeper analysis and use more options like subqueries and CTAS but we will leave these for our next project where we will have more data.
+-- Lastly, we kept the NULL values in our dataset but we did not take them into consideration. Ideally we could have done a Gap analysis to estimate for ex revenue with and without Total_Spent = NULL to see
+-- the difference. Deeper analysis will be presence on the next project.
 
 -- Every data save and push was accomplished with bash to git -> github.
 
