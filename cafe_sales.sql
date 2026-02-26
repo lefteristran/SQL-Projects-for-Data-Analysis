@@ -1,4 +1,4 @@
--- Inset flat file with import option from local desktop \ silver_cafe_sales contains the raw data of our project
+﻿-- Insert flat file with import option from local desktop \ silver_cafe_sales contains the raw data of our project
 
 -- ************************* DATA EXPLORATION - CLEANING - TRANSFORMATION ***********************************
 
@@ -162,7 +162,7 @@ CREATE VIEW gold_cafe_sales AS
   -- ******************************************************* EDA AND ADVANCED ANALYTICS *******************************************************************
 
 
-  --------- EDA ---------------
+  --------------------- EDA ------------------------------
 
   SELECT * FROM gold_cafe_sales
 
@@ -256,50 +256,291 @@ CREATE VIEW gold_cafe_sales AS
 
 
   
-  --------- ADVANCED ANALYTICS ---------------
+  ---------------------------------- ADVANCED ANALYTICS --------------------------------[CTEs and Window Functions]
+
+  
 
   SELECT * FROM gold_cafe_sales
 
 -- Investigate Monthly Transactions - Revenue and Running Total 
 
-SELECT 
-  Transaction_Date,
-  DATENAME(MONTH, Transaction_Date) AS Month_Name,
-  SUM(Total_Spent) OVER(PARTITION BY(Month_Name)) ORDER BY Transaction_Date ) AS Running_Total
-FROM gold_cafe_sales
-WHERE Transaction_Date IS NOT NULL
+
+WITH monthly AS (
+    SELECT 
+        DATEFROMPARTS(YEAR(Transaction_Date), MONTH(Transaction_Date), 1) AS Sales_Month,
+        SUM(Total_Spent) AS Monthly_Revenue,
+        COUNT(*) AS Transactions
+    FROM gold_cafe_sales
+    WHERE Transaction_Date IS NOT NULL
+    GROUP BY DATEFROMPARTS(YEAR(Transaction_Date), MONTH(Transaction_Date), 1)
+)
+
+SELECT
+    FORMAT(Sales_Month, 'MMM') Month_Name,
+    Monthly_Revenue,
+    Transactions, -- Most transactions: Oct
+    SUM(Monthly_Revenue) OVER (ORDER BY Sales_Month) AS Running_Total
+FROM monthly
+ORDER BY Sales_Month -- Top Month: Jun 
+
+-- Inspect Mom Change and Cumulative Analysis %
+
+
+WITH month_change AS (
+    SELECT DISTINCT
+        DATEFROMPARTS(YEAR(Transaction_Date), MONTH(Transaction_Date), 1) AS Sales_Month,
+        SUM(Total_Spent) OVER (PARTITION BY DATEFROMPARTS(YEAR(Transaction_Date), MONTH(Transaction_Date), 1)) AS Monthly_Revenue
+    FROM gold_cafe_sales
+    WHERE Transaction_Date IS NOT NULL
+)
+SELECT
+    Sales_Month,
+    FORMAT(100.0 * Monthly_Revenue / NULLIF(SUM(Monthly_Revenue) OVER (), 0),'N2') + ' %' AS Monthly_Cont_Pct, -- Feb was the month with the lowest sales
+    FORMAT(100.0 * SUM(Monthly_Revenue) OVER (ORDER BY Sales_Month)/ NULLIF(SUM(Monthly_Revenue) OVER (), 0),'N2') + ' %' AS Running_Cont_Pct -- 50% of sales was achieved on June which was also the best Month for sales!
+FROM month_change
+ORDER BY Sales_Month;
 
 
 
-
-
-SELECT 
-    DATENAME(MONTH, Transaction_Date) AS Month_Name,
-    COUNT(Total_Spent) AS Total_Revenue
-FROM gold_cafe_sales
-WHERE DATENAME(MONTH, Transaction_Date) IS NOT NULL
-GROUP BY DATENAME(MONTH, Transaction_Date)
-ORDER BY MIN(MONTH(Transaction_Date));
-
-
-SELECT DATENAME(MONTH,Transaction_Date) FROM gold_cafe_sales
-
-
--- Inspect Mom Change (abs %)
 
 -- Which day raises the highest revenue and transactions?
 
--- Spikes
+
+WITH Weekday_sales AS (
+SELECT
+    DATENAME(WEEKDAY,Transaction_Date) AS Days_of_week,
+    SUM(Total_Spent) OVER (PARTITION BY DATENAME(WEEKDAY,Transaction_Date)) AS Total_Spent,
+    COUNT(*) OVER (PARTITION BY DATENAME(WEEKDAY,Transaction_Date)) AS Total_Transactions
+FROM gold_cafe_sales
+WHERE Total_Spent IS NOT NULL AND DATENAME(WEEKDAY,Transaction_Date) IS NOT NULL
+
+)
+SELECT DISTINCT
+    Days_of_week, 
+    Total_Spent, 
+    Total_Transactions -- Friday has the highest orders but Thursday raises the highest revenue. Average Order Value (AOV) is slightly higher on Thursday.
+FROM Weekday_sales
+ORDER BY Total_Spent DESC 
 
 
--- Part-to-whole EDA % Revenue by item location payment method 
-
---How much revenue comes from rows with missing location?
-
---Does excluding 'NA' change results significantly?
-
--- How much data would be lost if filtering strict rows?
+------ AOV Comparisons -----
 
 
 
+-- Overall AOV
 
+SELECT 
+    ROUND(SUM(Total_Spent) / COUNT(*),1) AS AOV   -- AOV = 8.9
+FROM gold_cafe_sales
+WHERE Total_Spent IS NOT NULL 
+
+-- Monthly AOV
+
+SELECT 
+    DATEFROMPARTS(YEAR(Transaction_Date), MONTH(Transaction_Date), 1) AS Sales_Month,
+    Round(SUM(Total_Spent) * 1.0 / COUNT(*),2) AS Monthly_AOV
+FROM gold_cafe_sales
+WHERE Total_Spent IS NOT NULL
+  AND Transaction_Date IS NOT NULL                                               -- Top Rev Month: Jun, Top AOV Month: April. So, High revenue does not mean also high AOV.
+GROUP BY DATEFROMPARTS(YEAR(Transaction_Date), MONTH(Transaction_Date), 1)
+ORDER BY Sales_Month
+
+-- Location AOV
+
+SELECT 
+    Location AS Channel,
+    ROUND(SUM(Total_Spent) * 1.0 / COUNT(*),2) AS AOV
+FROM gold_cafe_sales                                                       
+WHERE Total_Spent IS NOT NULL  AND Location <> 'NA'  -- The "In-store" location has slightly higher basket size.
+GROUP BY Location
+ORDER BY AOV DESC
+
+-- Payment Method AOV
+
+SELECT 
+    Payment_Method,
+    ROUND(SUM(Total_Spent) * 1.0 / COUNT(*),2) AS AOV
+FROM gold_cafe_sales
+WHERE Total_Spent IS NOT NULL  AND Payment_Method <> 'NA' -- Bakket size is slightly higher when payment method is cash.
+GROUP BY Payment_Method
+ORDER BY AOV DESC
+
+
+---- Revenue by Item and Cumulative Analysis ----
+
+WITH item_rev AS (
+    SELECT
+        Item,
+        SUM(Total_Spent) AS Total_Item_Revenue
+    FROM dbo.gold_cafe_sales
+    WHERE Total_Spent IS NOT NULL  AND Item <> 'NA'
+    GROUP BY Item
+),
+calc AS (
+    SELECT
+        Item,
+        Total_Item_Revenue,
+        SUM(Total_Item_Revenue) OVER () AS Total_Revenue,
+        SUM(Total_Item_Revenue) OVER (ORDER BY Total_Item_Revenue DESC) AS Running_Revenue -- As we have seen already the highest revenue is generated by salad
+    FROM item_rev
+)                                                                                          -- Coffee Tea and Cookie has the lowest contribution
+SELECT
+    Item,
+    Total_Item_Revenue,
+    ROUND(100.0 * Total_Item_Revenue / Total_Revenue,2) AS Item_Revenue_Pct,
+    ROUND(100.0 * Running_Revenue / Total_Revenue ,2) AS Cumulative_Revenue_Pct
+FROM calc
+ORDER BY Total_Item_Revenue DESC
+
+
+----- Payment Revenue % -----
+
+WITH payment_rev AS (
+    SELECT
+        Payment_Method,
+        SUM(Total_Spent) AS Payment_Revenue
+    FROM gold_cafe_sales
+    WHERE Total_Spent IS NOT NULL  AND Payment_Method <> 'NA'
+    GROUP BY Payment_Method
+),
+calc AS (
+    SELECT                                                   --- Revenue Distribution is balanced.
+                                                             --- Top payment revenue: Credit Card - Highest AOV (cash) does not mean top payment method
+        Payment_Method,
+        Payment_Revenue,
+        SUM(Payment_Revenue) OVER () AS Total_Revenue
+    FROM payment_rev
+)
+SELECT
+    Payment_Method,
+    Payment_Revenue,
+    Round(100.0 * Payment_Revenue / Total_Revenue,2) AS Revenue_Pct
+FROM calc
+ORDER BY Payment_Revenue DESC
+
+----- Spend Basket Segmentation -----
+
+
+
+
+WITH spend_bucket AS (
+    SELECT
+        CASE
+            WHEN Total_Spent < 5 THEN 'Low'
+            WHEN Total_Spent BETWEEN 5 AND 15 THEN 'Medium'
+            ELSE 'High'
+        END AS Spend_Category,
+        Total_Spent
+    FROM gold_cafe_sales
+    WHERE Total_Spent IS NOT NULL
+),
+calc AS (
+    SELECT
+        Spend_Category,
+        COUNT(*) AS Transactions,
+        SUM(Total_Spent) AS Revenue,
+        SUM(COUNT(*)) OVER () AS Total_Transactions,
+        SUM(SUM(Total_Spent)) OVER () AS Total_Revenue
+    FROM spend_bucket
+    GROUP BY Spend_Category
+)
+
+SELECT
+    Spend_Category,
+    Transactions,
+    Revenue,
+    ROUND((100.0 * Transactions / Total_Transactions) , 2) AS Transaction_Pct, --The medium spend category has the highest revenue (55%) and the most transactions. 
+    ROUND((100.0 * Revenue / Total_Revenue) , 2) AS Revenue_Pct                -- High spend category has only 15% of transactions but comes 2nd in terms of tevenue
+FROM calc                                                                      -- Despite the fact that low spend category  comes 2nd in terms of transactions, its in the last position in terms of revenue.
+ORDER BY Revenue DESC             --- Bussiness Logic: Order volume and revenue comes from medium spend category ! & 
+
+
+
+----- Pareto 80/20 ----
+
+WITH item_rev AS (
+    SELECT
+        Item,
+        SUM(Total_Spent) AS Item_Revenue
+    FROM gold_cafe_sales
+    WHERE Total_Spent IS NOT NULL
+      AND Item <> 'NA'
+    GROUP BY Item
+),
+calc AS (
+    SELECT
+        Item,
+        Item_Revenue,
+        SUM(Item_Revenue) OVER () AS Total_Revenue,
+        SUM(Item_Revenue) OVER (ORDER BY Item_Revenue DESC) AS Running_Revenue
+    FROM item_rev
+)
+
+SELECT
+    Item,
+    Item_Revenue,
+    ROUND(100.0 * Item_Revenue / Total_Revenue ,2) AS Revenue_Pct,
+    ROUND(100.0 * Running_Revenue / Total_Revenue,2) AS Cumulative_Revenue_Pct --- We need 5/8 items to reach the 80% of the revenue | Portfolio Items are relatively stable as the revenue is spread across multiple products.
+FROM calc                                                                      --- Weak contributors cookie - tea - coffee
+ORDER BY Item_Revenue DESC
+
+
+--------------------------------------------------------------------------------------------------- END OF ANALYSIS -----------------------------------------------------------------------------------------------------
+
+--******************** SUMMARY **************************************
+
+/* 
+===========================================
+FINAL PROJECT SUMMARY – CAFE SALES ANALYSIS
+===========================================
+
+Dataset:
+~10,000 daily transactions (Year 2023).
+Data was cleaned, standardized and transformed into a Gold layer for analysis.
+
+Key Insights:
+
+• Average Order Value (AOV): ~8.9
+  High revenue months do not necessarily mean high basket size.
+
+• Revenue Drivers:
+  Medium spend segment (5–15) drives the business:
+  - 53% of transactions
+  - 56% of total revenue
+
+• High Spend Segment:
+  - Only 15% of transactions
+  - Generates 34% of revenue
+  → Strong upselling potential.
+
+• Product Concentration (Pareto Analysis):
+  5 out of 8 products generate 80% of revenue.
+  → Revenue is moderately diversified.
+  → Business is not dependent on a single product.
+
+• Channel Insights:
+  In-store transactions have slightly higher AOV than Takeaway.
+
+• Payment Insights:
+  Revenue distribution across payment methods is balanced.
+  Highest AOV does not necessarily equal highest total revenue.
+
+• Time Analysis:
+  Revenue is stable across months and weekdays.
+  No extreme volatility observed.
+
+Conclusion:
+The café demonstrates balanced revenue distribution,
+stable demand patterns, and healthy diversification
+across products, payment methods, and sales channel (location).
+*/
+
+
+--******************** COMMENTS **************************************
+
+-- We are aware that we could have done a deeper analysis and use more options like subqueries and CTAS but we will leave these for our next project where we will have more data.
+
+-- Every data save and push was accomplished with bash to git -> github.
+
+
+--------------------------------------------------------------------------------------------------- END OF Project -----------------------------------------------------------------------------------------------------
