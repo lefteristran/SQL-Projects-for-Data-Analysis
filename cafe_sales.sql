@@ -298,7 +298,7 @@ SELECT
     FORMAT(100.0 * Monthly_Revenue / NULLIF(SUM(Monthly_Revenue) OVER (), 0),'N2') + ' %' AS Monthly_Cont_Pct, -- Feb was the month with the lowest sales
     FORMAT(100.0 * SUM(Monthly_Revenue) OVER (ORDER BY Sales_Month)/ NULLIF(SUM(Monthly_Revenue) OVER (), 0),'N2') + ' %' AS Running_Cont_Pct -- 50% of sales was achieved on June which was also the best Month for sales!
 FROM month_change
-ORDER BY Sales_Month;
+ORDER BY Sales_Month
 
 
 
