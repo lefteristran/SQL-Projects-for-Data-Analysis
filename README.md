@@ -4,7 +4,7 @@ A portfolio-ready collection of SQL projects designed to demonstrate strong anal
 
 Built using advanced SQL techniques such as complex joins, CTEs, window functions, subqueries, views, and CTAS, each project highlights the ability to translate business questions into structured queries and actionable insights.
 
-Important Note: All projects have been created in SQL SERVER MANAGEMENT STUDIO (SSMS) saved locally and pushed to Github via Git - Bash.
+Important Note: All projects were developed in SQL Server Management Studio (SSMS), stored locally, and version-controlled using Git (Bash) before being pushed to GitHub to ensure proper tracking and reproducibility.
 
 Below you can find all the projects included on this repository and their corresponding link sources.
 
