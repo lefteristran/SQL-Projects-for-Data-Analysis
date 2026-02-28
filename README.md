@@ -10,4 +10,4 @@ Below you can find all the projects included on this repository and their corres
 
 1. Cafe Sales - https://www.kaggle.com/datasets/ahmedmohamed2003/cafe-sales-dirty-data-for-cleaning-training
 
-   This project analyzes ~10,000 cafe transactions (2023) using SQL Server Management Studio (SSMS). The workflow includes data cleaning, transformation, and quality checks in a silver layer, followed by the creation of a structured gold layer for analytics. Advanced SQL techniques such as CTEs, window functions, cumulative calculations, MoM analysis, AOV computation, revenue segmentation, and Pareto (80/20) analysis were applied to extract business insights.
+   This project analyzes ~10,000 cafe transactions (2023).  The workflow includes data cleaning, transformation, and quality checks in a silver layer, followed by the creation of a structured gold layer for analytics. Advanced SQL techniques such as CTEs, window functions, cumulative calculations, MoM analysis, AOV computation, revenue segmentation, and Pareto (80/20) analysis were applied to extract business insights.
