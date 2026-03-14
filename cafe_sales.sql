@@ -298,7 +298,7 @@ SELECT
     FORMAT(100.0 * Monthly_Revenue / NULLIF(SUM(Monthly_Revenue) OVER (), 0),'N2') + ' %' AS Monthly_Cont_Pct, -- Feb was the month with the lowest sales
     FORMAT(100.0 * SUM(Monthly_Revenue) OVER (ORDER BY Sales_Month)/ NULLIF(SUM(Monthly_Revenue) OVER (), 0),'N2') + ' %' AS Running_Cont_Pct -- 50% of sales was achieved on June which was also the best Month for sales!
 FROM month_change
-ORDER BY Sales_Month;
+ORDER BY Sales_Month
 
 
 
@@ -539,6 +539,8 @@ across products, payment methods, and sales channel (location).
 --******************** COMMENTS **************************************
 
 -- We are aware that we could have done a deeper analysis and use more options like subqueries and CTAS but we will leave these for our next project where we will have more data.
+-- Lastly, we kept the NULL values in our dataset but we did not take them into consideration. Ideally we could have done a Gap analysis to estimate for ex revenue with and without Total_Spent = NULL to see
+-- the difference. Deeper analysis will be presence on the next project.
 
 -- Every data save and push was accomplished with bash to git -> github.
 
